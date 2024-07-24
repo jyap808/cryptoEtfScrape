@@ -54,6 +54,8 @@ var (
 	avatarUsername string
 	avatarURL      string
 
+	listenPort int
+
 	// track
 	tickerResults         = map[string]types.Result{}
 	tickerResultsOverride = map[string]types.Result{}
@@ -68,10 +70,10 @@ var (
 
 	tickerDetails = map[string]tickerDetail{
 		// "CETH": {Description: "21Shares", Note: ""},                                                                        // 21Shares Core Ethereum ETF
-		"ETH":  {Description: "Grayscale Mini", Note: ""}, // Grayscale Ethereum Mini Trust
-		"ETHE": {Description: "Grayscale", Note: ""},      // Grayscale Ethereum Trust
-		"ETHV": {Description: "VanEck", Note: ""},         // VanEck Ethereum ETF
-		"ETHW": {Description: "Bitwise", Note: ""},        // Bitwise Ethereum ETF
+		"ETH":  {Description: "Grayscale Mini", Note: "ETH holdings are usually updated 1 day late", Delayed: true}, // Grayscale Ethereum Mini Trust
+		"ETHE": {Description: "Grayscale", Note: "ETHE holdings are usually updated 1 day late", Delayed: true},     // Grayscale Ethereum Trust
+		"ETHV": {Description: "VanEck", Note: ""},                                                                   // VanEck Ethereum ETF
+		"ETHW": {Description: "Bitwise", Note: ""},                                                                  // Bitwise Ethereum ETF
 	}
 )
 
@@ -84,6 +86,7 @@ func init() {
 	flag.StringVar(&webhookURL, "webhookURL", "https://discord.com/api/webhooks/", "Webhook URL")
 	flag.StringVar(&avatarUsername, "avatarUsername", "Annalee Call", "Avatar username")
 	flag.StringVar(&avatarURL, "avatarURL", "https://static1.personality-database.com/profile_images/6604632de9954b4d99575e56404bd8b7.png", "Avatar image URL")
+	flag.IntVar(&listenPort, "listenPort", 8081, "Listen port")
 	flag.Parse()
 }
 
@@ -119,7 +122,7 @@ func main() {
 
 	// Start HTTP server in a separate goroutine
 	go func() {
-		if err := http.ListenAndServe(":8080", nil); err != nil {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", listenPort), nil); err != nil {
 			log.Fatalf("HTTP server error: %v", err)
 		}
 	}()
