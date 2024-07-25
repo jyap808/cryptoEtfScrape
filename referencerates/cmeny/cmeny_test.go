@@ -1,4 +1,4 @@
-package cmeethusd_rr
+package cmeny
 
 import (
 	"testing"

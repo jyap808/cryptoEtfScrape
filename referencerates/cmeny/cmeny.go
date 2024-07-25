@@ -1,10 +1,10 @@
 /*
-The CME CF Ether Reference Rate – New York Variant is a once a day (4pm ET)
-benchmark price for ether, measured in US dollars per ether.
+The CME CF Reference Rates – New York Variant is a once a day (4pm ET)
+benchmark prices measured in US dollars per asset.
 
 https://www.cmegroup.com/markets/cryptocurrencies/cme-cf-cryptocurrency-benchmarks.html
 */
-package cmeethusd_rr
+package cmeny
 
 import (
 	"encoding/json"
@@ -20,6 +20,7 @@ type ReferenceRate struct {
 }
 
 type ReferenceRates struct {
+	BRRNY     [5]ReferenceRate `json:"BRRNY"`
 	ETHUSD_NY [5]ReferenceRate `json:"ETHUSD_NY"`
 }
 
@@ -41,8 +42,7 @@ func (rr *ReferenceRate) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Return the CME BRR NY trailing 5 day prices
-func GetETHUSD_NY() (referenceRates [5]ReferenceRate, err error) {
+func GetReferenceRates() (referenceRates ReferenceRates, err error) {
 	url := "https://www.cmegroup.com/services/cryptocurrencies/reference-rates"
 
 	// Create a new HTTP client
@@ -52,7 +52,7 @@ func GetETHUSD_NY() (referenceRates [5]ReferenceRate, err error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Println("Error creating request:", err)
-		return [5]ReferenceRate{}, err
+		return ReferenceRates{}, err
 	}
 
 	// Set headers
@@ -64,7 +64,7 @@ func GetETHUSD_NY() (referenceRates [5]ReferenceRate, err error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println("Error performing request:", err)
-		return [5]ReferenceRate{}, err
+		return ReferenceRates{}, err
 	}
 	defer resp.Body.Close()
 
@@ -72,15 +72,15 @@ func GetETHUSD_NY() (referenceRates [5]ReferenceRate, err error) {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("Error reading response body:", err)
-		return [5]ReferenceRate{}, err
+		return ReferenceRates{}, err
 	}
 
 	// Parse JSON data into struct
 	var data map[string]ReferenceRates
 	if err := json.Unmarshal(body, &data); err != nil {
 		log.Printf("Error unmarshalling JSON: %v", err)
-		return [5]ReferenceRate{}, err
+		return ReferenceRates{}, err
 	}
 
-	return data["referenceRates"].ETHUSD_NY, nil
+	return data["referenceRates"], nil
 }

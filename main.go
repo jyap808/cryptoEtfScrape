@@ -16,8 +16,9 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/jyap808/ethEtfScrape/cmeethusd_rr"
 	"github.com/jyap808/ethEtfScrape/funds"
+	"github.com/jyap808/ethEtfScrape/referencerates"
+	"github.com/jyap808/ethEtfScrape/referencerates/cmeny"
 	"github.com/jyap808/ethEtfScrape/types"
 	"github.com/michimani/gotwi"
 	"github.com/michimani/gotwi/tweet/managetweet"
@@ -59,7 +60,7 @@ var (
 	// track
 	tickerResults         = map[string]types.Result{}
 	tickerResultsOverride = map[string]types.Result{}
-	asset_rr              [5]cmeethusd_rr.ReferenceRate
+	asset_rrs             cmeny.ReferenceRates
 
 	// polling intervals
 	pollMinutes  int = 5
@@ -99,11 +100,8 @@ func main() {
 		wgCount++
 	}
 
-	// Initialize cmebrrnyRR
-	asset_rr = getCMEETHUSD_NYRR()
-	if asset_rr[0].Value == 0 {
-		log.Fatalln("Error: Reference Rate initialization error")
-	}
+	// Reference Rates handler
+	go handleReferenceRates()
 
 	var wg sync.WaitGroup
 
@@ -170,10 +168,9 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 			} else {
 				// compare
 				assetDiff := newResult.TotalAsset - tickerResults[ticker].TotalAsset
-				rr := getCMEETHUSD_NYRR()
-				assetPrice := rr[0].Value
+				assetPrice := asset_rrs.ETHUSD_NY[0].Value
 				if tickerDetails[ticker].Delayed {
-					assetPrice = rr[1].Value
+					assetPrice = asset_rrs.ETHUSD_NY[1].Value
 				}
 				flowDiff := assetDiff * assetPrice
 
@@ -187,7 +184,7 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 
 				msg := fmt.Sprintf("%s\nCHANGE Ether: %.1f\nTOTAL Ether: %.1f\nDETAILS Flow: $%.1f, RR: $%.1f",
 					header, assetDiff, newResult.TotalAsset,
-					flowDiff, rr[0].Value)
+					flowDiff, asset_rrs.ETHUSD_NY[0].Value)
 
 				postDiscord(msg)
 
@@ -270,32 +267,45 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	handleData(w, r, "update")
 }
 
-func getCMEETHUSD_NYRR() [5]cmeethusd_rr.ReferenceRate {
-	if len(asset_rr) > 0 {
-		// Cache the value once every 24 hours
-		firstDate := time.Now()
-		secondDate := asset_rr[0].Date
-		difference := firstDate.Sub(secondDate)
-		if difference.Hours() < 24 {
-			return asset_rr
-		}
-	}
-
-	rr, err := cmeethusd_rr.GetETHUSD_NY()
+// Initializes and updates daily at 4:05pm ET
+func handleReferenceRates() {
+	// Load the Eastern Time location
+	etLocation, err := time.LoadLocation("America/New_York")
 	if err != nil {
-		log.Println("Get Reference Rate error:", err)
-		if len(asset_rr) > 0 {
-			return asset_rr
-		} else {
-			return [5]cmeethusd_rr.ReferenceRate{}
-		}
+		log.Fatalf("Failed to load Eastern Time location: %v", err)
 	}
 
-	asset_rr = rr
+	for {
+		rrs, err := referencerates.CMENYCollect()
+		if err != nil {
+			log.Println("Get Reference Rates error:", err)
+			if len(asset_rrs.BRRNY) == 0 {
+				log.Fatalln("Reference Rates failed to initialize. Exiting...")
+			}
 
-	log.Println("Set Reference Rate:", asset_rr)
+			// Retry timer
+			time.Sleep(time.Hour)
+			continue
+		}
 
-	return asset_rr
+		log.Printf("Set Reference Rates: %v\n", rrs)
+		asset_rrs = rrs
+
+		// Calculate time until next update based on rrs.BRRNY[0].Date
+		lastUpdateTime := rrs.BRRNY[0].Date
+		now := time.Now().In(etLocation)
+		nextUpdateTime := time.Date(now.Year(), now.Month(), now.Day(), 16, 5, 0, 0, etLocation)
+
+		if now.After(nextUpdateTime) {
+			nextUpdateTime = nextUpdateTime.Add(24 * time.Hour)
+		}
+
+		sleepDuration := time.Until(nextUpdateTime)
+
+		log.Printf("Reference Rates Last update: %v, Next update: %v, Sleeping for: %v\n",
+			lastUpdateTime, nextUpdateTime, sleepDuration)
+		time.Sleep(sleepDuration)
+	}
 }
 
 func postDiscord(msg string) {
