@@ -1,12 +1,17 @@
 package funds
 
 import (
+	"github.com/jyap808/cryptoEtfScrape/funds/ceth"
 	"github.com/jyap808/cryptoEtfScrape/funds/eth"
 	"github.com/jyap808/cryptoEtfScrape/funds/ethe"
 	"github.com/jyap808/cryptoEtfScrape/funds/ethv"
 	"github.com/jyap808/cryptoEtfScrape/funds/ethw"
 	"github.com/jyap808/cryptoEtfScrape/types"
 )
+
+func CethCollect() types.Result {
+	return ceth.Collect()
+}
 
 func EthCollect() types.Result {
 	return eth.Collect()

@@ -74,7 +74,7 @@ var (
 	backoffHours int = 12
 
 	tickerDetails = map[string]tickerDetail{
-		// "CETH": {Description: "21Shares", Note: ""},                                                                        // 21Shares Core Ethereum ETF
+		"CETH": {Asset: "ETH", Description: "21Shares", Note: ""},                                                                       // 21Shares Core Ethereum ETF
 		"ETH":  {Asset: "ETH", Description: "Grayscale (Mini)", Note: "ETH holdings are usually updated 1 day late", Delayed: true},     // Grayscale Ethereum Mini Trust
 		"ETHE": {Asset: "ETH", Description: "Grayscale", Note: "ETHE holdings are usually updated 1 day late", Delayed: true},           // Grayscale Ethereum Trust
 		"ETHV": {Asset: "ETH", Description: "VanEck", Note: ""},                                                                         // VanEck Ethereum ETF
@@ -118,6 +118,7 @@ func main() {
 	wg.Add(wgCount)
 
 	// Launch goroutines for scraping functions
+	go handleFund(&wg, funds.CethCollect, "CETH")
 	go handleFund(&wg, funds.EthCollect, "ETH")
 	go handleFund(&wg, funds.EtheCollect, "ETHE")
 	go handleFund(&wg, funds.EthvCollect, "ETHV")
