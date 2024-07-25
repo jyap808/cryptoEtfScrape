@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gocolly/colly/v2"
-	"github.com/jyap808/ethEtfScrape/types"
+	"github.com/jyap808/cryptoEtfScrape/types"
 )
 
 type nextData struct {

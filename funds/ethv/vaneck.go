@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jyap808/ethEtfScrape/types"
+	"github.com/jyap808/cryptoEtfScrape/types"
 )
 
 type FundData struct {

@@ -1,4 +1,4 @@
-module github.com/jyap808/ethEtfScrape
+module github.com/jyap808/cryptoEtfScrape
 
 go 1.22.1
 
