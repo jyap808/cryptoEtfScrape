@@ -24,6 +24,18 @@ type ReferenceRates struct {
 	ETHUSD_NY [5]ReferenceRate `json:"ETHUSD_NY"`
 }
 
+// GetReferenceRatePointer returns a pointer to the specified reference rate array
+func (rr *ReferenceRates) GetReferenceRatePointer(asset string) *[5]ReferenceRate {
+	switch asset {
+	case "BTC":
+		return &rr.BRRNY
+	case "ETH":
+		return &rr.ETHUSD_NY
+	default:
+		return nil
+	}
+}
+
 // Custom unmarshalling function for time.Time field
 func (rr *ReferenceRate) UnmarshalJSON(data []byte) error {
 	var tmp struct {

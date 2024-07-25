@@ -44,9 +44,16 @@ type manualData struct {
 
 // Hold details for each ticker
 type tickerDetail struct {
+	Asset       string
 	Description string
 	Note        string
 	Delayed     bool
+}
+
+type assetDetail struct {
+	Units        string
+	UnitsLong    string
+	MinAssetDiff float64 // Skip X post when the difference is under this threshold
 }
 
 var (
@@ -66,15 +73,17 @@ var (
 	pollMinutes  int = 5
 	backoffHours int = 12
 
-	// Skip X post when the difference is under this threshold
-	minAssetDiff float64 = 10.0
-
 	tickerDetails = map[string]tickerDetail{
 		// "CETH": {Description: "21Shares", Note: ""},                                                                        // 21Shares Core Ethereum ETF
-		"ETH":  {Description: "Grayscale Mini", Note: "ETH holdings are usually updated 1 day late", Delayed: true}, // Grayscale Ethereum Mini Trust
-		"ETHE": {Description: "Grayscale", Note: "ETHE holdings are usually updated 1 day late", Delayed: true},     // Grayscale Ethereum Trust
-		"ETHV": {Description: "VanEck", Note: ""},                                                                   // VanEck Ethereum ETF
-		"ETHW": {Description: "Bitwise", Note: ""},                                                                  // Bitwise Ethereum ETF
+		"ETH":  {Asset: "ETH", Description: "Grayscale (Mini)", Note: "ETH holdings are usually updated 1 day late", Delayed: true},     // Grayscale Ethereum Mini Trust
+		"ETHE": {Asset: "ETH", Description: "Grayscale", Note: "ETHE holdings are usually updated 1 day late", Delayed: true},           // Grayscale Ethereum Trust
+		"ETHV": {Asset: "ETH", Description: "VanEck", Note: ""},                                                                         // VanEck Ethereum ETF
+		"ETHW": {Asset: "ETH", Description: "Bitwise", Note: "ETHW holdings are usually updated 4.5+ hours after the close of trading"}, // Bitwise Ethereum ETF
+	}
+
+	assetDetails = map[string]assetDetail{
+		"BTC": {Units: "BTC", UnitsLong: "Bitcoin", MinAssetDiff: 1.0},
+		"ETH": {Units: "ETH", UnitsLong: "Ether", MinAssetDiff: 10.0},
 	}
 )
 
@@ -168,9 +177,10 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 			} else {
 				// compare
 				assetDiff := newResult.TotalAsset - tickerResults[ticker].TotalAsset
-				assetPrice := asset_rrs.ETHUSD_NY[0].Value
+				aD := assetDetails[tickerDetails[ticker].Asset]
+				assetPrice := asset_rrs.GetReferenceRatePointer(aD.Units)[0].Value
 				if tickerDetails[ticker].Delayed {
-					assetPrice = asset_rrs.ETHUSD_NY[1].Value
+					assetPrice = asset_rrs.GetReferenceRatePointer(aD.Units)[1].Value
 				}
 				flowDiff := assetDiff * assetPrice
 
@@ -182,8 +192,8 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 					header = fmt.Sprintf("%s %s", ticker, formattedTime)
 				}
 
-				msg := fmt.Sprintf("%s\nCHANGE Ether: %.1f\nTOTAL Ether: %.1f\nDETAILS Flow: $%.1f, RR: $%.1f",
-					header, assetDiff, newResult.TotalAsset,
+				msg := fmt.Sprintf("%s\nCHANGE %s: %.1f\nTOTAL %s: %.1f\nDETAILS Flow: $%.1f, RR: $%.1f",
+					header, aD.UnitsLong, assetDiff, aD.UnitsLong, newResult.TotalAsset,
 					flowDiff, asset_rrs.ETHUSD_NY[0].Value)
 
 				postDiscord(msg)
@@ -198,14 +208,14 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 					note = tickerDetails[ticker].Note
 				}
 
-				xMsg := fmt.Sprintf("%s $%s\n\n%s FLOW: %s ETH, $%s\n🏦 TOTAL Ether in Trust: %s $ETH\n\n%s",
+				xMsg := fmt.Sprintf("%s $%s\n\n%s FLOW: %s %s, $%s\n🏦 TOTAL %s in Trust: %s $%s\n\n%s",
 					tickerDetails[ticker].Description, ticker,
-					flowEmoji, humanize.CommafWithDigits(assetDiff, 2), humanize.CommafWithDigits(flowDiff, 0),
-					humanize.CommafWithDigits(newResult.TotalAsset, 1), note)
+					flowEmoji, humanize.CommafWithDigits(assetDiff, 2), aD.Units, humanize.CommafWithDigits(flowDiff, 0),
+					aD.UnitsLong, humanize.CommafWithDigits(newResult.TotalAsset, 1), aD.Units, note)
 
 				// Reporting threshold check. Get the absolute difference
-				absEtherDiff := math.Abs(assetDiff)
-				if absEtherDiff > minAssetDiff {
+				absAssetDiff := math.Abs(assetDiff)
+				if absAssetDiff > aD.MinAssetDiff {
 					postTweet(xMsg)
 				}
 
