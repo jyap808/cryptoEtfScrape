@@ -3,6 +3,7 @@ package funds
 import (
 	"github.com/jyap808/cryptoEtfScrape/funds/ceth"
 	"github.com/jyap808/cryptoEtfScrape/funds/eth"
+	"github.com/jyap808/cryptoEtfScrape/funds/etha"
 	"github.com/jyap808/cryptoEtfScrape/funds/ethe"
 	"github.com/jyap808/cryptoEtfScrape/funds/ethv"
 	"github.com/jyap808/cryptoEtfScrape/funds/ethw"
@@ -16,6 +17,8 @@ func Collector(ticker string) types.Result {
 		return ceth.Collect()
 	case "ETH":
 		return eth.Collect()
+	case "ETHA":
+		return etha.Collect()
 	case "ETHE":
 		return ethe.Collect()
 	case "ETHV":
