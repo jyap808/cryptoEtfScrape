@@ -79,6 +79,7 @@ var (
 		"ETHE": {Asset: "ETH", Description: "Grayscale", Note: "ETHE holdings are usually updated 1 day late", Delayed: true},           // Grayscale Ethereum Trust
 		"ETHV": {Asset: "ETH", Description: "VanEck", Note: ""},                                                                         // VanEck Ethereum ETF
 		"ETHW": {Asset: "ETH", Description: "Bitwise", Note: "ETHW holdings are usually updated 4.5+ hours after the close of trading"}, // Bitwise Ethereum ETF
+		"EZET": {Asset: "ETH", Description: "Franklin", Note: ""},                                                                       // Franklin Ethereum ETF
 	}
 
 	assetDetails = map[string]assetDetail{
@@ -118,11 +119,12 @@ func main() {
 	wg.Add(wgCount)
 
 	// Launch goroutines for scraping functions
-	go handleFund(&wg, funds.CethCollect, "CETH")
-	go handleFund(&wg, funds.EthCollect, "ETH")
-	go handleFund(&wg, funds.EtheCollect, "ETHE")
-	go handleFund(&wg, funds.EthvCollect, "ETHV")
-	go handleFund(&wg, funds.EthwCollect, "ETHW")
+	go handleFund(&wg, "CETH")
+	go handleFund(&wg, "ETH")
+	go handleFund(&wg, "ETHE")
+	go handleFund(&wg, "ETHV")
+	go handleFund(&wg, "ETHW")
+	go handleFund(&wg, "EZET")
 
 	// Manual endpoints
 	http.HandleFunc("/override", handleOverride)
@@ -142,7 +144,7 @@ func main() {
 }
 
 // Generic handler
-func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string) {
+func handleFund(wg *sync.WaitGroup, ticker string) {
 	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
 
 	for {
@@ -157,7 +159,7 @@ func handleFund(wg *sync.WaitGroup, collector func() types.Result, ticker string
 			tickerResultsOverride[ticker] = types.Result{}
 			override = true
 		} else {
-			newResult = collector()
+			newResult = funds.Collector(ticker)
 		}
 
 		// Check date is valid. Date is optional so we check it is not none
@@ -278,7 +280,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	handleData(w, r, "update")
 }
 
-// Initializes and updates daily at 4:05pm ET
+// Initializes and updates daily at 4pm ET (with update buffer)
 func handleReferenceRates() {
 	// Load the Eastern Time location
 	etLocation, err := time.LoadLocation("America/New_York")
@@ -305,7 +307,7 @@ func handleReferenceRates() {
 		// Calculate time until next update based on rrs.BRRNY[0].Date
 		lastUpdateTime := rrs.BRRNY[0].Date
 		now := time.Now().In(etLocation)
-		nextUpdateTime := time.Date(now.Year(), now.Month(), now.Day(), 16, 5, 0, 0, etLocation)
+		nextUpdateTime := time.Date(now.Year(), now.Month(), now.Day(), 16, 11, 0, 0, etLocation)
 
 		if now.After(nextUpdateTime) {
 			nextUpdateTime = nextUpdateTime.Add(24 * time.Hour)
