@@ -74,13 +74,14 @@ var (
 	backoffHours int = 12
 
 	tickerDetails = map[string]tickerDetail{
-		"CETH": {Asset: "ETH", Description: "21Shares", Note: ""},                                                                       // 21Shares Core Ethereum ETF
-		"ETH":  {Asset: "ETH", Description: "Grayscale (Mini)", Note: "ETH holdings are usually updated 1 day late", Delayed: true},     // Grayscale Ethereum Mini Trust
-		"ETHA": {Asset: "ETH", Description: "BlackRock", Note: ""},                                                                      // BlackRock iShares Ethereum Trust ETF
-		"ETHE": {Asset: "ETH", Description: "Grayscale", Note: "ETHE holdings are usually updated 1 day late", Delayed: true},           // Grayscale Ethereum Trust
-		"ETHV": {Asset: "ETH", Description: "VanEck", Note: ""},                                                                         // VanEck Ethereum ETF
-		"ETHW": {Asset: "ETH", Description: "Bitwise", Note: "ETHW holdings are usually updated 4.5+ hours after the close of trading"}, // Bitwise Ethereum ETF
-		"EZET": {Asset: "ETH", Description: "Franklin", Note: ""},                                                                       // Franklin Ethereum ETF
+		"CETH": {Asset: "ETH", Description: "21Shares", Note: ""},                                                                        // 21Shares Core Ethereum ETF
+		"ETH":  {Asset: "ETH", Description: "Grayscale (Mini)", Note: "ETH holdings are usually updated 1 day late", Delayed: true},      // Grayscale Ethereum Mini Trust
+		"ETHA": {Asset: "ETH", Description: "BlackRock", Note: "ETHA holdings are usually updated 13+ hours after the close of trading"}, // BlackRock iShares Ethereum Trust ETF
+		"ETHE": {Asset: "ETH", Description: "Grayscale", Note: "ETHE holdings are usually updated 1 day late", Delayed: true},            // Grayscale Ethereum Trust
+		"ETHV": {Asset: "ETH", Description: "VanEck", Note: "ETHV holdings are usually updated 1 day late", Delayed: true},               // VanEck Ethereum ETF
+		"ETHW": {Asset: "ETH", Description: "Bitwise", Note: "ETHW holdings are usually updated 4.5+ hours after the close of trading"},  // Bitwise Ethereum ETF
+		"EZET": {Asset: "ETH", Description: "Franklin", Note: "EZET holdings are usually updated 5.5+ hours after the close of trading"}, // Franklin Ethereum ETF
+		"FETH": {Asset: "ETH", Description: "Fidelity", Note: "FETH holdings are usually updated 16+ hours after the close of trading"},  // Fidelity Ethereum Fund
 	}
 
 	assetDetails = map[string]assetDetail{
@@ -127,6 +128,7 @@ func main() {
 	go handleFund(&wg, "ETHV")
 	go handleFund(&wg, "ETHW")
 	go handleFund(&wg, "EZET")
+	go handleFund(&wg, "FETH")
 
 	// Manual endpoints
 	http.HandleFunc("/override", handleOverride)

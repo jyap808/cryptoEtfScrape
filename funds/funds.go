@@ -8,6 +8,7 @@ import (
 	"github.com/jyap808/cryptoEtfScrape/funds/ethv"
 	"github.com/jyap808/cryptoEtfScrape/funds/ethw"
 	"github.com/jyap808/cryptoEtfScrape/funds/ezet"
+	"github.com/jyap808/cryptoEtfScrape/funds/feth"
 	"github.com/jyap808/cryptoEtfScrape/types"
 )
 
@@ -27,6 +28,8 @@ func Collector(ticker string) types.Result {
 		return ethw.Collect()
 	case "EZET":
 		return ezet.Collect()
+	case "FETH":
+		return feth.Collect()
 	default:
 		return types.Result{}
 	}
