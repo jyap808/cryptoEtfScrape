@@ -77,6 +77,7 @@ var (
 		"ARKB": {Asset: "BTC", Description: "Ark 21Shares", Note: "ARKB holdings are updated 10+ hours after the close of trading"}, // ARK 21Shares Bitcoin ETF
 		"BITB": {Asset: "BTC", Description: "Bitwise", Note: "BITB holdings are updated 4.5+ hours after the close of trading"},     // Bitwise Bitcoin ETF
 		"BRRR": {Asset: "BTC", Description: "Valkyrie", Note: "BRRR holdings are updated 10+ hours after the close of trading"},     // Valkyrie Bitcoin Fund
+		"BTC":  {Asset: "BTC", Description: "Grayscale (Mini)", Note: "BTC holdings are updated 1 day late", Delayed: true},         // Grayscale Bitcoin Mini Trust
 		"BTCW": {Asset: "BTC", Description: "WisdomTree", Note: ""},                                                                 // WisdomTree Bitcoin Fund
 		"DEFI": {Asset: "BTC", Description: "Hashdex", Note: ""},                                                                    // Hashdex Bitcoin ETF
 		"EZBC": {Asset: "BTC", Description: "Franklin", Note: "EZBC holdings are updated 5.5+ hours after the close of trading"},    // Franklin Bitcoin ETF
@@ -135,6 +136,7 @@ func main() {
 	go handleFund(&wg, "ARKB")
 	go handleFund(&wg, "BITB")
 	go handleFund(&wg, "BRRR")
+	go handleFund(&wg, "BTC")
 	go handleFund(&wg, "BTCW")
 	go handleFund(&wg, "DEFI")
 	go handleFund(&wg, "EZBC")

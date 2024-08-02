@@ -5,6 +5,7 @@ import (
 	"github.com/jyap808/cryptoEtfScrape/funds/arkb"
 	"github.com/jyap808/cryptoEtfScrape/funds/bitb"
 	"github.com/jyap808/cryptoEtfScrape/funds/brrr"
+	"github.com/jyap808/cryptoEtfScrape/funds/btc"
 	"github.com/jyap808/cryptoEtfScrape/funds/btcw"
 	"github.com/jyap808/cryptoEtfScrape/funds/defi"
 	"github.com/jyap808/cryptoEtfScrape/funds/ezbc"
@@ -34,6 +35,8 @@ func Collector(ticker string) types.Result {
 		return bitb.Collect()
 	case "BRRR":
 		return brrr.Collect()
+	case "BTC":
+		return btc.Collect()
 	case "BTCW":
 		return btcw.Collect()
 	case "DEFI":
