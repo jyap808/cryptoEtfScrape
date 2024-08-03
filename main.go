@@ -56,23 +56,19 @@ type assetDetail struct {
 	MinAssetDiff float64 // Skip X post when the difference is under this threshold
 }
 
-var (
-	webhookURL string
-
-	avatarUsername string
-	avatarURL      string
-
-	listenPort int
-
-	// track
-	tickerResults         = map[string]types.Result{}
-	tickerResultsOverride = map[string]types.Result{}
-	asset_rrs             cmeny.ReferenceRates
-
-	// polling intervals
-	pollMinutes  int = 5
-	backoffHours int = 12
-)
+type App struct {
+	WebhookURL            string
+	AvatarUsername        string
+	AvatarURL             string
+	ListenPort            int
+	TickerResults         map[string]types.Result
+	TickerResultsOverride map[string]types.Result
+	AssetRRs              cmeny.ReferenceRates
+	PollMinutes           int
+	BackoffHours          int
+	TickerDetails         map[string]tickerDetail
+	AssetDetails          map[string]assetDetail
+}
 
 const (
 	OAuthTokenEnvKeyName       = "GOTWI_ACCESS_TOKEN"
@@ -80,39 +76,56 @@ const (
 )
 
 func main() {
-	flag.StringVar(&webhookURL, "webhookURL", "https://discord.com/api/webhooks/", "Webhook URL")
-	flag.StringVar(&avatarUsername, "avatarUsername", "Annalee Call", "Avatar username")
-	flag.StringVar(&avatarURL, "avatarURL", "https://static1.personality-database.com/profile_images/6604632de9954b4d99575e56404bd8b7.png", "Avatar image URL")
-	flag.IntVar(&listenPort, "listenPort", 8081, "Listen port")
+	app := NewApp()
+
+	flag.StringVar(&app.WebhookURL, "webhookURL", "https://discord.com/api/webhooks/", "Webhook URL")
+	flag.StringVar(&app.AvatarUsername, "avatarUsername", "Annalee Call", "Avatar username")
+	flag.StringVar(&app.AvatarURL, "avatarURL", "https://static1.personality-database.com/profile_images/6604632de9954b4d99575e56404bd8b7.png", "Avatar image URL")
+	flag.IntVar(&app.ListenPort, "listenPort", 8081, "Listen port")
 	flag.Parse()
 
+	app.Run()
+}
+
+func NewApp() *App {
+	return &App{
+		TickerResults:         make(map[string]types.Result),
+		TickerResultsOverride: make(map[string]types.Result),
+		PollMinutes:           5,
+		BackoffHours:          12,
+		TickerDetails:         tickerDetails,
+		AssetDetails:          assetDetails,
+	}
+}
+
+func (a *App) Run() {
 	// Initialize empty tickerResult
 	var wg sync.WaitGroup
 	wgCount := 0
-	for ticker := range tickerDetails {
-		tickerResults[ticker] = types.Result{}
-		tickerResultsOverride[ticker] = types.Result{}
+	for ticker := range a.TickerDetails {
+		a.TickerResults[ticker] = types.Result{}
+		a.TickerResultsOverride[ticker] = types.Result{}
 		wgCount++
 	}
 
 	// Reference Rates handler
-	go handleReferenceRates()
+	go a.handleReferenceRates()
 
 	// Increment the WaitGroup counter for each scraping function
 	wg.Add(wgCount)
 
 	// Launch goroutines for scraping functions
-	for ticker := range tickerDetails {
-		go handleFund(&wg, ticker)
+	for ticker := range a.TickerDetails {
+		go a.handleFund(&wg, ticker)
 	}
 
 	// Manual endpoints
-	http.HandleFunc("/override", handleOverride)
-	http.HandleFunc("/update", handleUpdate)
+	http.HandleFunc("/override", a.handleOverride)
+	http.HandleFunc("/update", a.handleUpdate)
 
 	// Start HTTP server in a separate goroutine
 	go func() {
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", listenPort), nil); err != nil {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", a.ListenPort), nil); err != nil {
 			log.Fatalf("HTTP server error: %v", err)
 		}
 	}()
@@ -124,7 +137,7 @@ func main() {
 }
 
 // Generic handler
-func handleFund(wg *sync.WaitGroup, ticker string) {
+func (a *App) handleFund(wg *sync.WaitGroup, ticker string) {
 	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
 
 	for {
@@ -132,18 +145,18 @@ func handleFund(wg *sync.WaitGroup, ticker string) {
 		override := false
 
 		// Check if there is a manual override set
-		if tickerResultsOverride[ticker].TotalAsset != 0 {
-			newResult = tickerResultsOverride[ticker]
+		if a.TickerResultsOverride[ticker].TotalAsset != 0 {
+			newResult = a.TickerResultsOverride[ticker]
 
 			// Clear override
-			tickerResultsOverride[ticker] = types.Result{}
+			a.TickerResultsOverride[ticker] = types.Result{}
 			override = true
 		} else {
 			newResult = funds.Collector(ticker)
 		}
 
 		// Check date is valid. Date is optional so we check it is not none
-		if !newResult.Date.IsZero() && newResult.Date.Before(tickerResults[ticker].Date) {
+		if !newResult.Date.IsZero() && newResult.Date.Before(a.TickerResults[ticker].Date) {
 			log.Printf("%s new result before current: %+v", ticker, newResult)
 
 			// Backoff for 1 hr or this just will loop
@@ -152,18 +165,18 @@ func handleFund(wg *sync.WaitGroup, ticker string) {
 			continue
 		}
 
-		if newResult.TotalAsset != tickerResults[ticker].TotalAsset && newResult.TotalAsset != 0 {
-			if tickerResults[ticker].TotalAsset == 0 {
+		if newResult.TotalAsset != a.TickerResults[ticker].TotalAsset && newResult.TotalAsset != 0 {
+			if a.TickerResults[ticker].TotalAsset == 0 {
 				// initialize
-				tickerResults[ticker] = newResult
-				log.Printf("Initialize %s: %+v", ticker, tickerResults[ticker])
+				a.TickerResults[ticker] = newResult
+				log.Printf("Initialize %s: %+v", ticker, a.TickerResults[ticker])
 			} else {
 				// compare
-				assetDiff := newResult.TotalAsset - tickerResults[ticker].TotalAsset
-				aD := assetDetails[tickerDetails[ticker].Asset]
-				assetPrice := asset_rrs.GetReferenceRatePointer(aD.Units)[0].Value
-				if tickerDetails[ticker].Delayed {
-					assetPrice = asset_rrs.GetReferenceRatePointer(aD.Units)[1].Value
+				assetDiff := newResult.TotalAsset - a.TickerResults[ticker].TotalAsset
+				aD := a.AssetDetails[a.TickerDetails[ticker].Asset]
+				assetPrice := a.AssetRRs.GetReferenceRatePointer(aD.Units)[0].Value
+				if a.TickerDetails[ticker].Delayed {
+					assetPrice = a.AssetRRs.GetReferenceRatePointer(aD.Units)[1].Value
 				}
 				flowDiff := assetDiff * assetPrice
 
@@ -177,9 +190,9 @@ func handleFund(wg *sync.WaitGroup, ticker string) {
 
 				msg := fmt.Sprintf("%s\nCHANGE %s: %.1f\nTOTAL %s: %.1f\nDETAILS Flow: $%.1f, RR: $%.1f",
 					header, aD.UnitsLong, assetDiff, aD.UnitsLong, newResult.TotalAsset,
-					flowDiff, asset_rrs.ETHUSD_NY[0].Value)
+					flowDiff, a.AssetRRs.ETHUSD_NY[0].Value)
 
-				postDiscord(msg)
+				a.postDiscord(msg)
 
 				flowEmoji := "🚀"
 				if assetDiff < 0 {
@@ -188,33 +201,33 @@ func handleFund(wg *sync.WaitGroup, ticker string) {
 
 				note := ""
 				if !override {
-					note = tickerDetails[ticker].Note
+					note = a.TickerDetails[ticker].Note
 				}
 
 				xMsg := fmt.Sprintf("%s $%s\n\n%s FLOW: %s %s, $%s\n🏦 TOTAL %s in Trust: %s $%s\n\n%s",
-					tickerDetails[ticker].Description, ticker,
+					a.TickerDetails[ticker].Description, ticker,
 					flowEmoji, humanize.CommafWithDigits(assetDiff, 2), aD.Units, humanize.CommafWithDigits(flowDiff, 0),
 					aD.UnitsLong, humanize.CommafWithDigits(newResult.TotalAsset, 1), aD.Units, note)
 
 				// Reporting threshold check. Get the absolute difference
 				absAssetDiff := math.Abs(assetDiff)
 				if absAssetDiff > aD.MinAssetDiff {
-					postTweet(xMsg)
+					a.postTweet(xMsg)
 				}
 
-				tickerResults[ticker] = newResult
+				a.TickerResults[ticker] = newResult
 
-				log.Printf("Update %s: %+v", ticker, tickerResults[ticker])
+				log.Printf("Update %s: %+v", ticker, a.TickerResults[ticker])
 
-				time.Sleep(time.Hour * time.Duration(backoffHours))
+				time.Sleep(time.Hour * time.Duration(a.BackoffHours))
 			}
 		}
 
-		time.Sleep(time.Minute * time.Duration(pollMinutes))
+		time.Sleep(time.Minute * time.Duration(a.PollMinutes))
 	}
 }
 
-func handleData(w http.ResponseWriter, r *http.Request, updateType string) {
+func (a *App) handleData(w http.ResponseWriter, r *http.Request, updateType string) {
 	var data manualData
 
 	body, err := io.ReadAll(r.Body)
@@ -234,9 +247,9 @@ func handleData(w http.ResponseWriter, r *http.Request, updateType string) {
 	var results map[string]types.Result
 	switch updateType {
 	case "override":
-		results = tickerResultsOverride
+		results = a.TickerResultsOverride
 	case "update":
-		results = tickerResults
+		results = a.TickerResults
 	default:
 		log.Println("Invalid update type")
 		return
@@ -252,16 +265,16 @@ func handleData(w http.ResponseWriter, r *http.Request, updateType string) {
 	fmt.Fprintf(w, "Data %s successful\n", updateType)
 }
 
-func handleOverride(w http.ResponseWriter, r *http.Request) {
-	handleData(w, r, "override")
+func (a *App) handleOverride(w http.ResponseWriter, r *http.Request) {
+	a.handleData(w, r, "override")
 }
 
-func handleUpdate(w http.ResponseWriter, r *http.Request) {
-	handleData(w, r, "update")
+func (a *App) handleUpdate(w http.ResponseWriter, r *http.Request) {
+	a.handleData(w, r, "update")
 }
 
 // Initializes and updates daily at 4pm ET (with update buffer)
-func handleReferenceRates() {
+func (a *App) handleReferenceRates() {
 	// Load the Eastern Time location
 	etLocation, err := time.LoadLocation("America/New_York")
 	if err != nil {
@@ -272,7 +285,7 @@ func handleReferenceRates() {
 		rrs, err := referencerates.CMENYCollect()
 		if err != nil {
 			log.Println("Get Reference Rates error:", err)
-			if len(asset_rrs.BRRNY) == 0 {
+			if len(a.AssetRRs.BRRNY) == 0 {
 				log.Fatalln("Reference Rates failed to initialize. Exiting...")
 			}
 
@@ -282,7 +295,7 @@ func handleReferenceRates() {
 		}
 
 		log.Printf("Set Reference Rates: %v\n", rrs)
-		asset_rrs = rrs
+		a.AssetRRs = rrs
 
 		// Calculate time until next update based on rrs.BRRNY[0].Date
 		lastUpdateTime := rrs.BRRNY[0].Date
@@ -301,15 +314,15 @@ func handleReferenceRates() {
 	}
 }
 
-func postDiscord(msg string) {
+func (a *App) postDiscord(msg string) {
 	blockEmbed := embed{Description: msg}
 	embeds := []embed{blockEmbed}
-	jsonReq := payload{Username: avatarUsername, AvatarURL: avatarURL, Embeds: embeds}
+	jsonReq := payload{Username: a.AvatarUsername, AvatarURL: a.AvatarURL, Embeds: embeds}
 
 	jsonStr, _ := json.Marshal(jsonReq)
 	log.Println("Discord POST:", string(jsonStr))
 
-	req, _ := http.NewRequest("POST", webhookURL, bytes.NewBuffer(jsonStr))
+	req, _ := http.NewRequest("POST", a.WebhookURL, bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -321,7 +334,7 @@ func postDiscord(msg string) {
 	defer resp.Body.Close()
 }
 
-func postTweet(msg string) {
+func (a *App) postTweet(msg string) {
 	in := &gotwi.NewClientInput{
 		AuthenticationMethod: gotwi.AuthenMethodOAuth1UserContext,
 		OAuthToken:           os.Getenv(OAuthTokenEnvKeyName),
