@@ -116,6 +116,7 @@ func init() {
 
 func main() {
 	// Initialize empty tickerResult
+	var wg sync.WaitGroup
 	wgCount := 0
 	for ticker := range tickerDetails {
 		tickerResults[ticker] = types.Result{}
@@ -126,33 +127,13 @@ func main() {
 	// Reference Rates handler
 	go handleReferenceRates()
 
-	var wg sync.WaitGroup
-
 	// Increment the WaitGroup counter for each scraping function
 	wg.Add(wgCount)
 
 	// Launch goroutines for scraping functions
-	// BTC
-	go handleFund(&wg, "ARKB")
-	go handleFund(&wg, "BITB")
-	go handleFund(&wg, "BRRR")
-	go handleFund(&wg, "BTC")
-	go handleFund(&wg, "BTCW")
-	go handleFund(&wg, "DEFI")
-	go handleFund(&wg, "EZBC")
-	go handleFund(&wg, "FBTC")
-	go handleFund(&wg, "GBTC")
-	go handleFund(&wg, "HODL")
-	go handleFund(&wg, "IBIT")
-	// ETH
-	go handleFund(&wg, "CETH")
-	go handleFund(&wg, "ETH")
-	go handleFund(&wg, "ETHA")
-	go handleFund(&wg, "ETHE")
-	go handleFund(&wg, "ETHV")
-	go handleFund(&wg, "ETHW")
-	go handleFund(&wg, "EZET")
-	go handleFund(&wg, "FETH")
+	for ticker := range tickerDetails {
+		go handleFund(&wg, ticker)
+	}
 
 	// Manual endpoints
 	http.HandleFunc("/override", handleOverride)
