@@ -79,15 +79,13 @@ const (
 	OAuthTokenSecretEnvKeyName = "GOTWI_ACCESS_TOKEN_SECRET"
 )
 
-func init() {
+func main() {
 	flag.StringVar(&webhookURL, "webhookURL", "https://discord.com/api/webhooks/", "Webhook URL")
 	flag.StringVar(&avatarUsername, "avatarUsername", "Annalee Call", "Avatar username")
 	flag.StringVar(&avatarURL, "avatarURL", "https://static1.personality-database.com/profile_images/6604632de9954b4d99575e56404bd8b7.png", "Avatar image URL")
 	flag.IntVar(&listenPort, "listenPort", 8081, "Listen port")
 	flag.Parse()
-}
 
-func main() {
 	// Initialize empty tickerResult
 	var wg sync.WaitGroup
 	wgCount := 0
