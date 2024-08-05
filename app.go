@@ -10,6 +10,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -300,6 +301,7 @@ func (a *App) handleReferenceRates() {
 			continue
 		}
 
+		rrs = a.verifyReferenceRates(rrs)
 		log.Printf("Set Reference Rates: %v\n", rrs)
 		a.AssetRRs = rrs
 
@@ -328,6 +330,35 @@ func (a *App) isNonTradingDay(date time.Time) bool {
 	}
 
 	return false
+}
+
+// Remove any non-trading days from Reference Rates
+// NOTE: Only issue is if Reference Rates has < 2 days of rates to reference
+func (a *App) verifyReferenceRates(rrs cmeny.ReferenceRates) cmeny.ReferenceRates {
+	processArray := func(arr [5]cmeny.ReferenceRate) [5]cmeny.ReferenceRate {
+		var result [5]cmeny.ReferenceRate
+		index := 0
+		for _, rate := range arr {
+			if !a.isNonTradingDay(rate.Date) {
+				if index < 5 {
+					result[index] = rate
+					index++
+				}
+			}
+		}
+		return result
+	}
+
+	v := reflect.ValueOf(&rrs).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		if field.Kind() == reflect.Array && field.Type().Elem() == reflect.TypeOf(cmeny.ReferenceRate{}) {
+			newArray := processArray(field.Interface().([5]cmeny.ReferenceRate))
+			field.Set(reflect.ValueOf(newArray))
+		}
+	}
+
+	return rrs
 }
 
 // Calculate the next update time, skipping weekends and non-trading holidays
