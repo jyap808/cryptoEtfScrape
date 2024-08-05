@@ -41,6 +41,7 @@ type App struct {
 	BackoffHours          int
 	TickerDetails         map[string]tickerDetail
 	AssetDetails          map[string]assetDetail
+	tickerResultsMu       sync.Mutex
 }
 
 type payload struct {
@@ -90,7 +91,7 @@ func (a *App) Run() {
 	var wg sync.WaitGroup
 	wgCount := 0
 	for ticker := range a.TickerDetails {
-		a.TickerResults[ticker] = types.Result{}
+		a.UpdateTickerResults(ticker, types.Result{})
 		a.TickerResultsOverride[ticker] = types.Result{}
 		wgCount++
 	}
@@ -130,6 +131,12 @@ func (a *App) setupAndStartHTTPServer() {
 	}()
 }
 
+func (a *App) UpdateTickerResults(ticker string, result types.Result) {
+	a.tickerResultsMu.Lock()
+	defer a.tickerResultsMu.Unlock()
+	a.TickerResults[ticker] = result
+}
+
 // Generic handler
 func (a *App) handleFund(wg *sync.WaitGroup, ticker string) {
 	defer wg.Done() // Decrement the WaitGroup counter when the goroutine finishes
@@ -166,7 +173,7 @@ func (a *App) handleFund(wg *sync.WaitGroup, ticker string) {
 		if newResult.TotalAsset != a.TickerResults[ticker].TotalAsset && newResult.TotalAsset != 0 {
 			if a.TickerResults[ticker].TotalAsset == 0 {
 				// initialize
-				a.TickerResults[ticker] = newResult
+				a.UpdateTickerResults(ticker, newResult)
 				log.Printf("Initialize %s: %+v", ticker, a.TickerResults[ticker])
 			} else {
 				// compare
@@ -213,7 +220,7 @@ func (a *App) handleFund(wg *sync.WaitGroup, ticker string) {
 					a.postTweet(xMsg)
 				}
 
-				a.TickerResults[ticker] = newResult
+				a.UpdateTickerResults(ticker, newResult)
 
 				log.Printf("Update %s: %+v", ticker, a.TickerResults[ticker])
 
