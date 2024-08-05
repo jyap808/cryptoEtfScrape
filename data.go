@@ -27,4 +27,30 @@ var (
 		"BTC": {Units: "BTC", UnitsLong: "Bitcoin", MinAssetDiff: 1.0},
 		"ETH": {Units: "ETH", UnitsLong: "Ether", MinAssetDiff: 10.0},
 	}
+
+	nonTradingHolidays = map[string]bool{
+		"2024-09-02": true,
+		"2024-11-28": true,
+		"2024-12-25": true,
+		"2025-01-01": true,
+		"2025-01-20": true,
+		"2025-02-17": true,
+		"2025-04-18": true,
+		"2025-05-26": true,
+		"2025-06-19": true,
+		"2025-07-04": true,
+		"2025-09-01": true,
+		"2025-11-27": true,
+		"2025-12-25": true,
+		"2026-01-01": true,
+		"2026-01-19": true,
+		"2026-02-16": true,
+		"2026-04-03": true,
+		"2026-05-25": true,
+		"2026-06-19": true,
+		"2026-07-03": true,
+		"2026-09-07": true,
+		"2026-11-26": true,
+		"2026-12-25": true,
+	}
 )

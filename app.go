@@ -41,6 +41,7 @@ type App struct {
 	BackoffHours          int
 	TickerDetails         map[string]tickerDetail
 	AssetDetails          map[string]assetDetail
+	NonTradingHolidays    map[string]bool
 	tickerResultsMu       sync.Mutex
 }
 
@@ -83,6 +84,7 @@ func NewApp() *App {
 		BackoffHours:          12,
 		TickerDetails:         tickerDetails,
 		AssetDetails:          assetDetails,
+		NonTradingHolidays:    nonTradingHolidays,
 	}
 }
 
@@ -278,7 +280,6 @@ func (a *App) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	a.handleData(w, r, "update")
 }
 
-// Initializes and updates daily at 4pm ET (with update buffer)
 func (a *App) handleReferenceRates() {
 	// Load the Eastern Time location
 	etLocation, err := time.LoadLocation("America/New_York")
@@ -305,18 +306,45 @@ func (a *App) handleReferenceRates() {
 		// Calculate time until next update based on rrs.BRRNY[0].Date
 		lastUpdateTime := rrs.BRRNY[0].Date
 		now := time.Now().In(etLocation)
-		nextUpdateTime := time.Date(now.Year(), now.Month(), now.Day(), 16, 11, 0, 0, etLocation)
-
-		if now.After(nextUpdateTime) {
-			nextUpdateTime = nextUpdateTime.Add(24 * time.Hour)
-		}
-
+		nextUpdateTime := a.calculateNextUpdateTime(now, etLocation)
 		sleepDuration := time.Until(nextUpdateTime)
 
 		log.Printf("Reference Rates Last update: %v, Next update: %v, Sleeping for: %v\n",
 			lastUpdateTime, nextUpdateTime, sleepDuration)
 		time.Sleep(sleepDuration)
 	}
+}
+
+func (a *App) isNonTradingDay(date time.Time) bool {
+	// Check if the date is a weekend
+	if date.Weekday() == time.Saturday || date.Weekday() == time.Sunday {
+		return true
+	}
+
+	// Check if the date is a non-trading holiday
+	dateStr := date.Format("2006-01-02")
+	if _, ok := a.NonTradingHolidays[dateStr]; ok {
+		return true
+	}
+
+	return false
+}
+
+// Calculate the next update time, skipping weekends and non-trading holidays
+// Updates daily at 4pm ET (with update buffer)
+func (a *App) calculateNextUpdateTime(now time.Time, etLocation *time.Location) time.Time {
+	nextUpdateTime := time.Date(now.Year(), now.Month(), now.Day(), 16, 11, 0, 0, etLocation)
+
+	if now.After(nextUpdateTime) {
+		nextUpdateTime = nextUpdateTime.Add(24 * time.Hour)
+	}
+
+	// Skip weekends and non-trading holidays
+	for a.isNonTradingDay(nextUpdateTime) {
+		nextUpdateTime = nextUpdateTime.Add(24 * time.Hour)
+	}
+
+	return nextUpdateTime
 }
 
 func (a *App) postDiscord(msg string) {
