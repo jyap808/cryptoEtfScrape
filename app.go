@@ -340,10 +340,8 @@ func (a *App) verifyReferenceRates(rrs cmeny.ReferenceRates) cmeny.ReferenceRate
 		index := 0
 		for _, rate := range arr {
 			if !a.isNonTradingDay(rate.Date) {
-				if index < 5 {
-					result[index] = rate
-					index++
-				}
+				result[index] = rate
+				index++
 			}
 		}
 		return result
