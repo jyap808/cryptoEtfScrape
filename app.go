@@ -188,7 +188,7 @@ func (a *App) handleFund(wg *sync.WaitGroup, ticker string) {
 
 				msg := fmt.Sprintf("%s\nCHANGE %s: %.1f\nTOTAL %s: %.1f\nDETAILS Flow: $%.1f, RR: $%.1f",
 					header, aD.UnitsLong, assetDiff, aD.UnitsLong, newResult.TotalAsset,
-					flowDiff, a.AssetRRs.ETHUSD_NY[0].Value)
+					flowDiff, assetPrice)
 
 				a.postDiscord(msg)
 
