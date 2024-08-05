@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -30,25 +29,29 @@ type ColumnCoordinates struct {
 	ContentIndex int
 }
 
-func CollectFromURLsAndPDFCoordinates(pdfBaseURL string, prospectusURL string, pdfCoordinates PDFCoordinates) (result types.Result) {
-	actionExchangeRepositoryURL := getActionExchangeRepositoryURL(prospectusURL)
-	collectionID := getCollectionID(actionExchangeRepositoryURL)
+func CollectFromURLsAndPDFCoordinates(pdfBaseURL string, prospectusURL string, pdfCoordinates PDFCoordinates) (result types.Result, err error) {
+	actionExchangeRepositoryURL, err := getActionExchangeRepositoryURL(prospectusURL)
+	if err != nil {
+		return types.Result{}, err
+	}
+	collectionID, err := getCollectionID(actionExchangeRepositoryURL)
+	if err != nil {
+		return types.Result{}, err
+	}
 
 	url := fmt.Sprintf(pdfBaseURL, collectionID)
 
 	// Fetch the data from the URL
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Println("Error performing request:", err)
-		return
+		return types.Result{}, fmt.Errorf("error performing request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("Error reading response body:", err)
-		return
+		return types.Result{}, fmt.Errorf("error reading response body: %w", err)
 	}
 
 	// Create a reader from the byte slice
@@ -56,8 +59,7 @@ func CollectFromURLsAndPDFCoordinates(pdfBaseURL string, prospectusURL string, p
 
 	r, err := pdf.NewReader(reader, int64(len(body)))
 	if err != nil {
-		log.Println("Error creating reader:", err)
-		return
+		return types.Result{}, fmt.Errorf("error creating reader: %w", err)
 	}
 
 	pageIndex := 1
@@ -73,14 +75,14 @@ func CollectFromURLsAndPDFCoordinates(pdfBaseURL string, prospectusURL string, p
 		total, _ := strconv.ParseFloat(rowHoldings, 64)
 		result.TotalAsset = total
 	} else {
-		log.Println("Fidelity PDF row and column collection mismatch")
+		return types.Result{}, fmt.Errorf("error Fidelity PDF row and column collection mismatch")
 	}
 
-	return
+	return result, nil
 }
 
 // The URL redirects to www.actionsxchangerepository.fidelity.com
-func getActionExchangeRepositoryURL(url string) (redirectURL string) {
+func getActionExchangeRepositoryURL(url string) (redirectURL string, err error) {
 	c := colly.NewCollector()
 
 	// Find and extract the redirect URL
@@ -89,16 +91,15 @@ func getActionExchangeRepositoryURL(url string) (redirectURL string) {
 	})
 
 	// Visit the URL
-	err := c.Visit(url)
+	err = c.Visit(url)
 	if err != nil {
-		log.Println("Error:", err)
-		return ""
+		return "", err
 	}
 
-	return redirectURL
+	return redirectURL, nil
 }
 
-func getCollectionID(url string) (collectionID int) {
+func getCollectionID(url string) (collectionID int, err error) {
 	c := colly.NewCollector()
 
 	c.OnHTML("td", func(e *colly.HTMLElement) {
@@ -110,13 +111,12 @@ func getCollectionID(url string) (collectionID int) {
 	})
 
 	// Visit the URL
-	err := c.Visit(url)
+	err = c.Visit(url)
 	if err != nil {
-		log.Println("Error:", err)
-		return 0
+		return 0, err
 	}
 
-	return collectionID
+	return collectionID, nil
 }
 
 func extractCollectionIDFromOnClick(onClick string) int {

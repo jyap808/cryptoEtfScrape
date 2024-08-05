@@ -8,7 +8,7 @@ import (
 	"github.com/jyap808/cryptoEtfScrape/types"
 )
 
-func Collect() (result types.Result) {
+func Collect() (result types.Result, err error) {
 	// Create a new collector
 	c := colly.NewCollector()
 
@@ -30,5 +30,5 @@ func Collect() (result types.Result) {
 
 	c.Wait()
 
-	return result
+	return result, nil
 }

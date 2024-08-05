@@ -5,7 +5,7 @@ import (
 	"github.com/jyap808/cryptoEtfScrape/types"
 )
 
-func Collect() (result types.Result) {
+func Collect() (result types.Result, err error) {
 	url := "https://www.vaneck.com/Main/NavInformationBlock/GetContent/?blockid=252190&ticker=HODL"
 	return vaneck.CollectFromURLAndSearch(url, "Bitcoin in Trust")
 }

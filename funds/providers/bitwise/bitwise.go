@@ -8,7 +8,7 @@ import (
 	"github.com/jyap808/cryptoEtfScrape/types"
 )
 
-func CollectFromURLAndSearch(url string, search string) (result types.Result) {
+func CollectFromURLAndSearch(url string, search string) (result types.Result, err error) {
 	// Create a new collector
 	c := colly.NewCollector()
 
@@ -36,5 +36,5 @@ func CollectFromURLAndSearch(url string, search string) (result types.Result) {
 
 	c.Wait()
 
-	return result
+	return result, nil
 }

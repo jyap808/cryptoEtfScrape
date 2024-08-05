@@ -2,8 +2,8 @@ package blackrock
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
@@ -19,30 +19,27 @@ type Fund struct {
 	Shares types.Result
 }
 
-func CollectFromURLAndTicker(url string, ticker string) (result types.Result) {
+func CollectFromURLAndTicker(url string, ticker string) (result types.Result, err error) {
 	// Create a new HTTP client
 	client := http.Client{}
 
 	// Create a new GET request
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Println("Error creating request:", err)
-		return
+		return types.Result{}, fmt.Errorf("error creating request: %w", err)
 	}
 
 	// Perform the request
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Println("Error performing request:", err)
-		return
+		return types.Result{}, fmt.Errorf("error performing request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("Error reading response body:", err)
-		return
+		return types.Result{}, fmt.Errorf("error reading response body: %w", err)
 	}
 
 	// Trim any leading characters that may cause the issue
@@ -53,7 +50,7 @@ func CollectFromURLAndTicker(url string, ticker string) (result types.Result) {
 
 	var data FundData
 	if err := json.Unmarshal([]byte(bodyStr), &data); err != nil {
-		log.Printf("Error unmarshalling JSON: %v", err)
+		return types.Result{}, fmt.Errorf("error unmarshalling JSON: %w", err)
 	}
 
 	// Iterate through the funds and find the one with ticker
@@ -64,10 +61,10 @@ func CollectFromURLAndTicker(url string, ticker string) (result types.Result) {
 			if ok {
 				sharesRaw, _ := sharesMap["raw"].(float64)
 				result.TotalAsset = sharesRaw
-				return
+				return result, nil
 			}
 		}
 	}
 
-	return result
+	return result, nil
 }

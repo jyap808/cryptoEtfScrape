@@ -136,6 +136,7 @@ func (a *App) handleFund(wg *sync.WaitGroup, ticker string) {
 
 	for {
 		var newResult types.Result
+		var err error
 		override := false
 
 		// Check if there is a manual override set
@@ -146,7 +147,10 @@ func (a *App) handleFund(wg *sync.WaitGroup, ticker string) {
 			a.TickerResultsOverride[ticker] = types.Result{}
 			override = true
 		} else {
-			newResult = funds.Collector(ticker)
+			newResult, err = funds.Collector(ticker)
+			if err != nil {
+				log.Printf("%s fund Collect error: %s", ticker, err)
+			}
 		}
 
 		// Check date is valid. Date is optional so we check it is not none

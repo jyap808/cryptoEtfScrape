@@ -5,7 +5,7 @@ import (
 	"github.com/jyap808/cryptoEtfScrape/types"
 )
 
-func Collect() (result types.Result) {
+func Collect() (result types.Result, err error) {
 	url := "https://cdn.21shares.com/uploads/fund-documents/bny-bank/holdings/product/current/CETH-Export.csv"
 	return twentyoneshares.CollectFromURL(url)
 }

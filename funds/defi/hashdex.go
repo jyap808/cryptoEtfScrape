@@ -8,7 +8,7 @@ import (
 	"github.com/jyap808/cryptoEtfScrape/types"
 )
 
-func Collect() (result types.Result) {
+func Collect() (result types.Result, err error) {
 	url := "https://hashdex-etfs.com/defi"
 
 	c := colly.NewCollector()
@@ -33,5 +33,7 @@ func Collect() (result types.Result) {
 	// Visit the URL
 	c.Visit(url)
 
-	return result
+	c.Wait()
+
+	return result, nil
 }

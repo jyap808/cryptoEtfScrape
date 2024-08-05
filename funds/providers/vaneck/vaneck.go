@@ -2,8 +2,8 @@ package vaneck
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -26,7 +26,7 @@ type Nav struct {
 	Value string
 }
 
-func CollectFromURLAndSearch(url string, search string) (result types.Result) {
+func CollectFromURLAndSearch(url string, search string) (result types.Result, err error) {
 	// NOTE: Fix for getting old cached responses from this endpoint
 	client := &http.Client{
 		Transport: &http.Transport{
@@ -37,28 +37,25 @@ func CollectFromURLAndSearch(url string, search string) (result types.Result) {
 	// Create a new GET request
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Println("Error creating request:", err)
-		return
+		return types.Result{}, fmt.Errorf("error creating request: %w", err)
 	}
 
 	// Perform the request
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Println("Error performing request:", err)
-		return
+		return types.Result{}, fmt.Errorf("error performing request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("Error reading response body:", err)
-		return
+		return types.Result{}, fmt.Errorf("error reading response body: %w", err)
 	}
 
 	var data FundData
 	if err := json.Unmarshal([]byte(body), &data); err != nil {
-		log.Printf("Error unmarshalling JSON: %v", err)
+		return types.Result{}, fmt.Errorf("error unmarshalling JSON: %w", err)
 	}
 
 	// Define the layout of the input date
@@ -79,5 +76,5 @@ func CollectFromURLAndSearch(url string, search string) (result types.Result) {
 		}
 	}
 
-	return result
+	return result, nil
 }

@@ -5,7 +5,7 @@ import (
 	"github.com/jyap808/cryptoEtfScrape/types"
 )
 
-func Collect() (result types.Result) {
+func Collect() (result types.Result, err error) {
 	pdfBaseURL := "https://www.actionsxchangerepository.fidelity.com/ShowDocument/documentPDF.htm?clientId=Fidelity&applicationId=MFL&securityId=31613E103&docType=DALY&docFormat=pdf&securityIdType=CUSIP&collectionId=%d&docName=1.ETH-DALY.pdf&criticalIndicator=N&pdfReaderStatus=Y"
 	prospectusURL := "https://fundresearch.fidelity.com/prospectus/eproredirect?clientId=Fidelity&applicationId=MFL&securityIdType=CUSIP&critical=N&securityId=31613E103"
 	pdfCoordinates := fidelity.PDFCoordinates{

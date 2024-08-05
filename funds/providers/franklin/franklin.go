@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -36,7 +35,7 @@ type Holding struct {
 	Quantity string `json:"quantityshrpar"`
 }
 
-func CollectWithFundIDAndSearch(fundID int, search string) (result types.Result) {
+func CollectWithFundIDAndSearch(fundID int, search string) (result types.Result, err error) {
 	// This API key is hard coded on their web site
 	url := "https://www.franklintempleton.com/api/pds/price-and-performance?apikey=4ef35821-5244-41bc-a699-0192d002c3d1p&op=Holdings&id=14"
 
@@ -50,29 +49,26 @@ func CollectWithFundIDAndSearch(fundID int, search string) (result types.Result)
 	// Create a new GET request
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 	if err != nil {
-		log.Println("Error creating request:", err)
-		return
+		return types.Result{}, fmt.Errorf("error creating request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	// Perform the request
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Println("Error performing request:", err)
-		return
+		return types.Result{}, fmt.Errorf("error performing request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("Error reading response body:", err)
-		return
+		return types.Result{}, fmt.Errorf("error reading response body: %w", err)
 	}
 
 	var data FundData
 	if err := json.Unmarshal([]byte(body), &data); err != nil {
-		log.Printf("Error unmarshalling JSON: %v", err)
+		return types.Result{}, fmt.Errorf("error unmarshalling JSON: %w", err)
 	}
 
 	// Iterate
@@ -89,9 +85,9 @@ func CollectWithFundIDAndSearch(fundID int, search string) (result types.Result)
 			// Parse the string as a time.Time value
 			parsedTime, _ := time.Parse(layout, nav.Date)
 			result.Date = parsedTime
-			return
+			return result, nil
 		}
 	}
 
-	return result
+	return result, nil
 }

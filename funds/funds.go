@@ -26,7 +26,7 @@ import (
 	"github.com/jyap808/cryptoEtfScrape/types"
 )
 
-func Collector(ticker string) types.Result {
+func Collector(ticker string) (types.Result, error) {
 	switch ticker {
 	// BTC
 	case "ARKB":
@@ -69,6 +69,6 @@ func Collector(ticker string) types.Result {
 	case "FETH":
 		return feth.Collect()
 	default:
-		return types.Result{}
+		return types.Result{}, nil
 	}
 }

@@ -2,6 +2,7 @@ package twentyoneshares
 
 import (
 	"encoding/csv"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -12,15 +13,14 @@ import (
 	"github.com/jyap808/cryptoEtfScrape/types"
 )
 
-func CollectFromURL(url string) (result types.Result) {
+func CollectFromURL(url string) (result types.Result, err error) {
 	// Create a new HTTP client
 	client := http.Client{}
 
 	// Create a new GET request
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Println("Error creating request:", err)
-		return
+		return types.Result{}, fmt.Errorf("error creating request: %w", err)
 	}
 
 	// Set headers
@@ -29,16 +29,14 @@ func CollectFromURL(url string) (result types.Result) {
 	// Perform the request
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Println("Error performing request:", err)
-		return
+		return types.Result{}, fmt.Errorf("error performing request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("Error reading response body:", err)
-		return
+		return types.Result{}, fmt.Errorf("error reading response body: %w", err)
 	}
 
 	r := csv.NewReader(strings.NewReader(string(body)))
@@ -54,8 +52,7 @@ func CollectFromURL(url string) (result types.Result) {
 
 		// CSV record validity check
 		if len(record) < 6 {
-			log.Printf("CETH: Invalid record length: expected at least 6 fields, got %d", len(record))
-			return
+			return types.Result{}, fmt.Errorf("invalid record length: expected at least 6 fields, got %d", len(record))
 		}
 
 		if i == 1 {
@@ -67,10 +64,9 @@ func CollectFromURL(url string) (result types.Result) {
 
 			total, _ := strconv.ParseFloat(record[4], 64)
 
-			result = types.Result{Date: parsedTime, TotalAsset: total}
-			return
+			return types.Result{Date: parsedTime, TotalAsset: total}, nil
 		}
 	}
 
-	return result
+	return types.Result{}, nil
 }

@@ -22,7 +22,7 @@ type nextData struct {
 	}
 }
 
-func CollectFromURL(url string) (result types.Result) {
+func CollectFromURL(url string) (result types.Result, err error) {
 	// creating a new Colly instance
 	c := colly.NewCollector()
 
@@ -53,13 +53,11 @@ func CollectFromURL(url string) (result types.Result) {
 
 	c.Wait()
 
-	return result
+	return result, nil
 }
 
 // findResultsInIncludes searches for the unique field within "includes"
 func findResultsInIncludes(includesData map[string]interface{}) (types.Result, error) {
-	result := &types.Result{}
-
 	for _, value := range includesData {
 		// Assuming the value is a map[string]interface{}
 		include, ok := value.(map[string]interface{})
@@ -78,10 +76,10 @@ func findResultsInIncludes(includesData map[string]interface{}) (types.Result, e
 			// Parse the string as a time.Time value
 			parsedTime, _ := time.Parse(layout, include["date"].(string))
 
-			result.TotalAsset = totalAssetInTrust
-			result.Date = parsedTime
-
-			return *result, nil
+			return types.Result{
+				TotalAsset: totalAssetInTrust,
+				Date:       parsedTime,
+			}, nil
 		}
 	}
 
