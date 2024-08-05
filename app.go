@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -79,6 +80,10 @@ type assetDetail struct {
 
 func NewApp() *App {
 	return &App{
+		WebhookURL:            getEnv("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/"),
+		AvatarUsername:        getEnv("DISCORD_AVATAR_USERNAME", "Annalee Call"),
+		AvatarURL:             getEnv("DISCORD_AVATAR_URL", "https://static1.personality-database.com/profile_images/6604632de9954b4d99575e56404bd8b7.png"),
+		ListenPort:            getEnvAsInt("LISTEN_PORT", 8081),
 		TickerResults:         make(map[string]types.Result),
 		TickerResultsOverride: make(map[string]types.Result),
 		PollMinutes:           5,
@@ -87,6 +92,25 @@ func NewApp() *App {
 		AssetDetails:          assetDetails,
 		NonTradingHolidays:    nonTradingHolidays,
 	}
+}
+
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
+
+func getEnvAsInt(key string, fallback int) int {
+	strValue, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+	value, err := strconv.Atoi(strValue)
+	if err != nil {
+		return fallback
+	}
+	return value
 }
 
 func (a *App) Run() {

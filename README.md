@@ -8,9 +8,9 @@ This was historically [btcEtfScrape](https://github.com/jyap808/btcEtfScrape) bu
 
 ## Set up
 
-This is largely a personal project so I just use a wrapper script. Set up the variables accordingly.
+X integration requires setting up environment variables.
 
-runme.sh
+Example: runme.sh
 ```
 #!/bin/bash
 
@@ -23,9 +23,9 @@ export GOTWI_ACCESS_TOKEN_SECRET=
 ./cryptoEtfScrape -webhookURL https://discord.com/api/webhooks/[SET THIS]
 ```
 
-## TODO
 
-Further Dockerize the set up.
+For a Docker set up, copy `env.sample` to `env` and set the environment variables accordingly.
+
 
 ## License
 
