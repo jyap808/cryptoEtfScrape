@@ -10,7 +10,7 @@ func Collect() (result types.Result, err error) {
 	prospectusURL := "https://fundresearch.fidelity.com/prospectus/eproredirect?clientId=Fidelity&applicationId=MFL&securityIdType=CUSIP&critical=N&securityId=315948109"
 	pdfCoordinates := fidelity.PDFCoordinates{
 		Row:    fidelity.RowCoordinates{Index: 0, ContentIndex: 9},
-		Column: fidelity.ColumnCoordinates{Index: 1, ContentIndex: 18},
+		Column: fidelity.ColumnCoordinates{Index: 1, ContentIndex: 23},
 	}
 
 	return fidelity.CollectFromURLsAndPDFCoordinates(pdfBaseURL, prospectusURL, pdfCoordinates)
