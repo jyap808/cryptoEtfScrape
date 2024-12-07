@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -85,9 +86,14 @@ func CollectFromURLsAndPDFCoordinates(pdfBaseURL string, prospectusURL string, p
 func getActionExchangeRepositoryURL(url string) (redirectURL string, err error) {
 	c := colly.NewCollector()
 
-	// Find and extract the redirect URL
-	c.OnHTML("a", func(e *colly.HTMLElement) {
-		redirectURL = e.Attr("href")
+	// Find and extract the redirect URL from the script tag
+	c.OnHTML("script", func(e *colly.HTMLElement) {
+		scriptContent := e.Text
+		re := regexp.MustCompile(`window\.location\.href\s*=\s*'(.*?)'`)
+		match := re.FindStringSubmatch(scriptContent)
+		if len(match) > 1 {
+			redirectURL = match[1]
+		}
 	})
 
 	// Visit the URL
