@@ -1,9 +1,9 @@
 package grayscale
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -12,39 +12,45 @@ import (
 	"github.com/jyap808/cryptoEtfScrape/types"
 )
 
-type nextData struct {
-	Props struct {
-		PageProps struct {
-			Page struct {
-				Includes map[string]interface{}
-			}
-		}
-	}
-}
-
 func CollectFromURL(url string) (result types.Result, err error) {
-	// creating a new Colly instance
 	c := colly.NewCollector()
 
-	// Set up a callback to be executed when the HTML body is found
-	c.OnHTML("body", func(e *colly.HTMLElement) {
-		// Get the content of the __NEXT_DATA__ script tag
-		nextDataContent := e.DOM.Find("#__NEXT_DATA__").Text()
+	// Tracking flag
+	dataFound := false
 
-		// Parse the content as JSON
-		var data nextData
-		err := json.NewDecoder(strings.NewReader(nextDataContent)).Decode(&data)
-		if err != nil {
-			log.Println(err)
+	c.OnHTML("script", func(e *colly.HTMLElement) {
+		if dataFound {
+			return
 		}
 
-		// Access the "includes" field
-		includesData := data.Props.PageProps.Page.Includes
+		scriptContent := e.Text
 
-		// Search for the value within "includes"
-		result, err = findResultsInIncludes(includesData)
-		if err != nil {
-			log.Println(err)
+		// Skip scripts that don't contain next_f
+		if !strings.Contains(scriptContent, "self.__next_f.push") {
+			return
+		}
+
+		// Find the pricingData section which should contain our target fields
+		if idx := strings.Index(scriptContent, "pricingData"); idx != -1 {
+			// Extract a reasonable chunk of text after "pricingData"
+			endIdx := idx + 2000
+			if endIdx > len(scriptContent) {
+				endIdx = len(scriptContent)
+			}
+			relevantSection := scriptContent[idx:endIdx]
+
+			// Now look for both target fields in this focused section
+			if strings.Contains(relevantSection, "totalAssetInTrust") &&
+				strings.Contains(relevantSection, "pricingDataDate") {
+
+				extractedResult, extractErr := extractDataFromScript(relevantSection)
+				if extractErr == nil {
+					result = extractedResult
+					dataFound = true
+					return
+				}
+				log.Printf("Found matching section but extraction failed: %v", extractErr)
+			}
 		}
 	})
 
@@ -53,35 +59,48 @@ func CollectFromURL(url string) (result types.Result, err error) {
 
 	c.Wait()
 
+	if !dataFound {
+		return result, fmt.Errorf("required data not found in any script tags")
+	}
+
 	return result, nil
 }
 
-// findResultsInIncludes searches for the unique field within "includes"
-func findResultsInIncludes(includesData map[string]interface{}) (types.Result, error) {
-	for _, value := range includesData {
-		// Assuming the value is a map[string]interface{}
-		include, ok := value.(map[string]interface{})
-		if !ok {
-			continue
-		}
+// extractDataFromScript parses the script content to extract the required fields
+func extractDataFromScript(scriptContent string) (types.Result, error) {
+	// The content has escaped quotes (\\"), so we need to adjust our regex patterns
+	pricingDateRegex := regexp.MustCompile(`\\\"pricingDataDate\\\":\\\"([^\\]+)\\\"`)
+	totalAssetRegex := regexp.MustCompile(`\\\"totalAssetInTrust\\\":\\\"([^\\]+)\\\"`)
 
-		// Search for "totalAssetInTrustRaw" within each include
-		totalAssetInTrustRaw, found := include["totalAssetInTrust"].(string)
-		if found {
-			inputClean := strings.ReplaceAll(totalAssetInTrustRaw, ",", "")
-			totalAssetInTrust, _ := strconv.ParseFloat(inputClean, 64)
+	pricingDateMatch := pricingDateRegex.FindStringSubmatch(scriptContent)
+	totalAssetMatch := totalAssetRegex.FindStringSubmatch(scriptContent)
 
-			// Define the layout of the input date
-			layout := "01/02/2006"
-			// Parse the string as a time.Time value
-			parsedTime, _ := time.Parse(layout, include["date"].(string))
-
-			return types.Result{
-				TotalAsset: totalAssetInTrust,
-				Date:       parsedTime,
-			}, nil
-		}
+	if len(pricingDateMatch) < 2 || len(totalAssetMatch) < 2 {
+		return types.Result{}, fmt.Errorf("required fields not found in script content")
 	}
 
-	return types.Result{}, fmt.Errorf("totalAssetInTrust not found within 'includes'")
+	// Extract the values
+	pricingDateStr := pricingDateMatch[1]
+	totalAssetStr := totalAssetMatch[1]
+
+	// Parse the total asset value
+	totalAssetStr = strings.ReplaceAll(totalAssetStr, "$", "")
+	totalAssetStr = strings.ReplaceAll(totalAssetStr, ",", "")
+
+	totalAsset, err := strconv.ParseFloat(totalAssetStr, 64)
+	if err != nil {
+		return types.Result{}, fmt.Errorf("failed to parse totalAsset '%s': %w", totalAssetStr, err)
+	}
+
+	// Parse the date
+	layout := "01/02/2006"
+	parsedTime, err := time.Parse(layout, pricingDateStr)
+	if err != nil {
+		return types.Result{}, fmt.Errorf("failed to parse date '%s': %w", pricingDateStr, err)
+	}
+
+	return types.Result{
+		TotalAsset: totalAsset,
+		Date:       parsedTime,
+	}, nil
 }

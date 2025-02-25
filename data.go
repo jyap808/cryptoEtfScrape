@@ -29,12 +29,6 @@ var (
 	}
 
 	nonTradingHolidays = map[string]bool{
-		"2024-09-02": true,
-		"2024-11-28": true,
-		"2024-12-25": true,
-		"2025-01-01": true,
-		"2025-01-20": true,
-		"2025-02-17": true,
 		"2025-04-18": true,
 		"2025-05-26": true,
 		"2025-06-19": true,
