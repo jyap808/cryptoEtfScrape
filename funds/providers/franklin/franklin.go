@@ -66,16 +66,20 @@ func CollectWithFundIDAndSearch(fundID int, search string) (result types.Result,
 		return types.Result{}, fmt.Errorf("error reading response body: %w", err)
 	}
 
+	return parseJSON(body, search)
+}
+
+func parseJSON(body []byte, search string) (result types.Result, err error) {
 	var data FundData
 	if err := json.Unmarshal([]byte(body), &data); err != nil {
 		return types.Result{}, fmt.Errorf("error unmarshalling JSON: %w", err)
 	}
 
 	// Iterate
-	for _, nav := range data.Data.Portfolio.PortfolioData.DailyHoldings {
-		if nav.SECName == search {
+	for _, holding := range data.Data.Portfolio.PortfolioData.DailyHoldings {
+		if holding.SECName == search {
 			// Extract
-			totalRaw := nav.Quantity
+			totalRaw := holding.Quantity
 			inputClean := strings.ReplaceAll(totalRaw, ",", "")
 			total, _ := strconv.ParseFloat(inputClean, 64)
 			result.TotalAsset = total
@@ -83,11 +87,11 @@ func CollectWithFundIDAndSearch(fundID int, search string) (result types.Result,
 			// Define the layout of the input date
 			layout := "01/02/2006"
 			// Parse the string as a time.Time value
-			parsedTime, _ := time.Parse(layout, nav.Date)
+			parsedTime, _ := time.Parse(layout, holding.Date)
 			result.Date = parsedTime
 			return result, nil
 		}
 	}
 
-	return result, nil
+	return types.Result{}, fmt.Errorf("no holding found for search term: %s", search)
 }
