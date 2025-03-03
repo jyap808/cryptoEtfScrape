@@ -14,9 +14,9 @@ type FundData struct {
 	AaData [][]interface{} `json:"aaData"`
 }
 
-type Fund struct {
-	Ticker string
-	Shares types.Result
+type DisplayData struct {
+	Display string  `json:"display"`
+	Raw     float64 `json:"raw"`
 }
 
 func CollectFromURLAndTicker(url string, ticker string) (result types.Result, err error) {
@@ -59,14 +59,19 @@ func parseJSON(bodyStr string, ticker string) (result types.Result, err error) {
 
 	// Iterate through the funds and find the one with ticker
 	for _, fund := range data.AaData {
-		if len(fund) > 0 && fund[0] == ticker {
-			// Extract the "Shares" field
-			sharesMap, ok := fund[6].(map[string]interface{})
-			if ok {
-				sharesRaw, _ := sharesMap["raw"].(float64)
-				result.TotalAsset = sharesRaw
-				return result, nil
+		if len(fund) > 6 && fund[0] == ticker {
+			sharesJSON, err := json.Marshal(fund[6])
+			if err != nil {
+				return types.Result{}, fmt.Errorf("error marshalling shares data: %v", err)
 			}
+
+			var shares DisplayData
+			if err := json.Unmarshal(sharesJSON, &shares); err != nil {
+				return types.Result{}, fmt.Errorf("error unmarshalling shares data: %v", err)
+			}
+
+			result.TotalAsset = shares.Raw
+			return result, nil
 		}
 	}
 
