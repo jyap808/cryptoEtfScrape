@@ -32,6 +32,13 @@ func Test_parseJSON(t *testing.T) {
 			wantResult: types.Result{TotalAsset: 573135.9859},
 			wantErr:    false,
 		},
+		{
+			name: "ETHA - Bounds error",
+			args: args{bodyStr: `{"aaData":[["ETH","ETHER","Alternative",{"display":"$2,861,350,156.52","raw":2861350156.52},{"display":"100.00","raw":99.9998},{"display":"2,861,350,156.52","raw":2861350156.52},{"display":"1,292,488.65380","raw":2957069172.8}],["USD","USD CASH","Cash",{"display":"$6,017.57","raw":6017.57},{"display":"0.00","raw":0.0002},{"display":"6,017.57","raw":6017.57},{"display":"6,017.57000","raw":6017.57}]]}`,
+				ticker: "ETH"},
+			wantResult: types.Result{},
+			wantErr:    true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

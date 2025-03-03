@@ -19,6 +19,11 @@ type DisplayData struct {
 	Raw     float64 `json:"raw"`
 }
 
+var boundsCheck = map[string]float64{
+	"ETH": 100_000_000.00,
+	"BTC": 10_000_000.00,
+}
+
 func CollectFromURLAndTicker(url string, ticker string) (result types.Result, err error) {
 	// Create a new HTTP client
 	client := http.Client{}
@@ -68,6 +73,11 @@ func parseJSON(bodyStr string, ticker string) (result types.Result, err error) {
 			var shares DisplayData
 			if err := json.Unmarshal(sharesJSON, &shares); err != nil {
 				return types.Result{}, fmt.Errorf("error unmarshalling shares data: %v", err)
+			}
+
+			// Bounds check
+			if shares.Raw > boundsCheck[ticker] {
+				return types.Result{}, fmt.Errorf("out of bounds error for ticker %s shares: %v", ticker, shares.Raw)
 			}
 
 			result.TotalAsset = shares.Raw
