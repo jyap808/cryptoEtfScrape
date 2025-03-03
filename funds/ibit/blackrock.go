@@ -6,6 +6,6 @@ import (
 )
 
 func Collect() (result types.Result, err error) {
-	url := "https://blackrock.com/us/financial-professionals/products/333011/fund/1500962885783.ajax?tab=all&fileType=json"
+	url := "https://www.blackrock.com/us/individual/products/333011/fund/1464253357814.ajax?tab=all&fileType=json"
 	return blackrock.CollectFromURLAndTicker(url, "BTC")
 }
