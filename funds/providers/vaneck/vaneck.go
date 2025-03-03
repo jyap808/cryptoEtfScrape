@@ -53,6 +53,10 @@ func CollectFromURLAndSearch(url string, search string) (result types.Result, er
 		return types.Result{}, fmt.Errorf("error reading response body: %w", err)
 	}
 
+	return parseJSON(body, search)
+}
+
+func parseJSON(body []byte, search string) (result types.Result, err error) {
 	var data FundData
 	if err := json.Unmarshal([]byte(body), &data); err != nil {
 		return types.Result{}, fmt.Errorf("error unmarshalling JSON: %w", err)
@@ -76,5 +80,5 @@ func CollectFromURLAndSearch(url string, search string) (result types.Result, er
 		}
 	}
 
-	return result, nil
+	return types.Result{}, fmt.Errorf("no holding found for search term: %s", search)
 }
