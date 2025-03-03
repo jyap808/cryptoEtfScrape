@@ -48,6 +48,10 @@ func CollectFromURLAndTicker(url string, ticker string) (result types.Result, er
 		return r != '{' && r != '['
 	})
 
+	return parseJSON(bodyStr, ticker)
+}
+
+func parseJSON(bodyStr string, ticker string) (result types.Result, err error) {
 	var data FundData
 	if err := json.Unmarshal([]byte(bodyStr), &data); err != nil {
 		return types.Result{}, fmt.Errorf("error unmarshalling JSON: %w", err)
